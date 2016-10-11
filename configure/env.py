@@ -1,0 +1,1 @@
+LIST_TABLES = "resources/list-tables.txt"
