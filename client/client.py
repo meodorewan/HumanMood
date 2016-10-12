@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath('..'))
 
 from configure.env import LIST_TABLES
 
-def run(command, body, users):
+def run(command, body):
     url = "http://localhost:8080/HMServlet";
     
     headers = {'Content-Type': 'application/x-www-form-urlencoded',
@@ -18,7 +18,6 @@ def run(command, body, users):
     body = {
         'command' : command,
         'data': body,
-        'users': users
     }
 
     response, content = httplib2.Http().request(
@@ -29,7 +28,12 @@ def run(command, body, users):
     print response
 
 if __name__ == "__main__":
-    run('naive-bayes', 'HR_min,HR_max', 'user001')
+
+    params = {
+        'conditions' : 'HR_min, HR_max',
+        'user': 'user001'
+    }
+    run('naive-bayes', params)
     # cnt = 0
     # with open('../' + LIST_TABLES , 'rb') as lt:
     #     for path in lt:

@@ -1,10 +1,12 @@
 package mongo;
 
 import com.google.gson.Gson;
+import com.mongodb.Block;
 import com.mongodb.MongoClient;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoDatabase;
 import com.opencsv.CSVReader;
+import datastructure.HMDataStructure;
 import org.bson.Document;
 import schemas.Schemas;
 
@@ -42,12 +44,6 @@ public class MongoModel {
         return instance;
     }
 
-    public FindIterable<Document> getCollections(String username) {
-        return db.getCollection(DBNAME).find(
-                new Document(Schemas.NAME, username)
-        );
-    }
-
     public void reloadModel() {
         MongoClient mongoClient = new MongoClient();
         MongoDatabase db = mongoClient.getDatabase(DATABASE);
@@ -82,7 +78,7 @@ public class MongoModel {
             e.printStackTrace();
         }
     }
-    public void insertOneCollection(HttpServletRequest request) {
+    public void insertOne(HttpServletRequest request) {
         HashMap<String, String> params = (new Gson()).fromJson(request.getParameter("data"),
                 (new HashMap()).getClass());
         Iterator<Map.Entry<String, String>> it = params.entrySet().iterator();
@@ -103,11 +99,6 @@ public class MongoModel {
             }
         }
         document.append(Schemas.NAME, name);
-        System.out.println(name);
-
-        //add more features to username
-        //System.out.println("updating data");
-        //System.out.println(request.getParameter("data"));
 
         FindIterable<Document> iterable = db.getCollection(DBNAME).find(
                 new Document(Schemas.PRIMARY_KEY, document.getString(Schemas.PRIMARY_KEY))
@@ -124,5 +115,82 @@ public class MongoModel {
             System.out.println("not exist, insert one");
             db.getCollection(DBNAME).insertOne(document);
         }
+    }
+    /*
+    * find all document matching schema with target
+    */
+    public List<Document> find(String schema, String target) {
+        FindIterable<Document> iterable = db.getCollection(DBNAME).find(new Document(schema, target));
+        final List<Document> result = new ArrayList<Document>();
+
+        iterable.forEach(new Block<Document>() {
+            @Override
+            public void apply(Document document) {
+                result.add(document);
+            }
+        });
+        return result;
+    }
+
+
+    public List<HMDataStructure> adjust(String username, String firstParam, String secondParam) throws Exception {
+        List<Document> docs = find(Schemas.NAME, username);
+        List<HMDataStructure> result = new ArrayList<HMDataStructure>();
+
+        if (!firstParam.equals("MoodEA") && !firstParam.equals("MoodTA"))
+            throw new Exception("first params should be MoodEA or MoodTA");
+
+        for (int i = 0; i < docs.size(); i++) {
+            Document doc = docs.get(i);
+            String n = doc.getString(Schemas.NAME);
+            if (doc.getString(firstParam) == null ||
+                    doc.getString(secondParam) == null)
+                throw new Exception("first param or second param is not found in database");
+
+            double mood = Double.parseDouble(doc.getString(firstParam));
+            double condition = Double.parseDouble(doc.getString(secondParam));
+
+            HMDataStructure nw = new HMDataStructure();
+            nw.add(Schemas.NAME, n);
+            nw.add(firstParam, mood);
+            nw.add(secondParam, condition);
+            nw.add("timestamp", getTimestamp(doc));
+            result.add(nw);
+        }
+
+        Comparator<HMDataStructure> comparator = new Comparator<HMDataStructure>() {
+            @Override
+            public int compare(HMDataStructure o1, HMDataStructure o2) {
+                return o2.get("timestamp") - o1.get("timestamp");
+            }
+        };
+        Collections.sort(result, comparator);
+        return result;
+    }
+    /*
+     * timestamp is counted in hour
+     * 1 day = 24 hours
+     * 1 month = 30 days average
+     * 1 year = 12 months
+    */
+    public long getTimestamp(Document doc) {
+        String date = doc.getString(Schemas.PRIMARY_KEY);
+        int c = 0;
+        int year = 0;
+        int month = 0;
+        int day = 0;
+        int hour = 0;
+        for (int i = 0; i < date.length(); i++) {
+            if (date.charAt(i) == '_') {
+                c++;
+                continue;
+            }
+            if (c == 1) year = year * 10 + date.charAt(i) - 48;
+            if (c == 2) month = month * 10 + date.charAt(i) - 48;
+            if (c == 3) day = day * 10 + date.charAt(i) - 48;
+            if (c == 4) hour = hour * 10 + date.charAt(i) - 48;
+        }
+        //System.out.println(year + " " + month + " " + day + " " + hour);
+        return (year - 1) * 12 * 30 * 24 + (month - 1) * 30 * 24 + (day - 1) * 24 + hour;
     }
 }

@@ -8,6 +8,5 @@ public class Schemas {
 
     public static final String NAME = "NAME";
     public static final String MoodEA = "MoodEA";
-
     public static final String MoodTA = "MoodTA";
 }
