@@ -24,7 +24,7 @@ class DocumentCmp implements Comparator<Document> {
 }
 public class Naivebayes {
     public double getAccuracy(HttpServletRequest request) {
-        //System.out.println(documents.size());
+
 
         return 0;
     }

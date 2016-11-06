@@ -2,20 +2,21 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import algorithm.KNearestNeighbor;
 import algorithm.Naivebayes;
 
-import Result.HMResult;
-import datastructure.HMDataStructure;
+import algorithm.Pearson;
+import com.google.gson.Gson;
+import org.bson.Document;
+import result.HMResult;
 import mongo.MongoModel;
+import schemas.Schemas;
 
+import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
+import java.util.*;
 import java.io.IOException;
 import java.io.PrintWriter;
-import com.google.gson.*;
-import java.util.*;
-
-import mongo.MongoModel;
-import org.bson.Document;
-import schemas.Schemas;
 
 /**
  * Created by fx on 05/08/2016.
@@ -40,33 +41,66 @@ public class HMServerlet extends HttpServlet {
             case "naive-bayes":
                 result = naivebayes(request);
                 break;
-            case "correlation":
-                try {
-                    result = correlation(request);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+            case "normalize":
+                result = normalize(request);
                 break;
-
+            case "pearson":
+                result = pearson(request);
+                break;
+            case "export":
+                exportData(request);
+                break;
         }
         PrintWriter out = response.getWriter();
         out.print(result);
     }
 
-    private HMResult correlation(HttpServletRequest request) throws Exception {
-        Map<String,String> params = new Gson().fromJson(request.getParameter("data"), Map.class);
+    private void exportData(HttpServletRequest request) throws FileNotFoundException, UnsupportedEncodingException {
+        MongoModel model = MongoModel.getInstance();
+        model.normalize();
+
+        PrintWriter writer = new PrintWriter("resources/clean-data.txt", "UTF-8");
+        for (int i = 0; i < model.cleanData.size(); i++){
+            Document document = model.cleanData.get(i);
+            double hr_avg = Double.parseDouble(document.getString(Schemas.HR_avg));
+            if (hr_avg == 0)
+                continue;
+            writer.print(document.toString());
+        }
+        writer.close();
+    }
+
+    private HMResult pearson(HttpServletRequest request) {
+        Map<String,String> data = new Gson().fromJson(request.getParameter("data"), Map.class);
+        String user = data.get("user");
+
         HMResult result = new HMResult();
+        if (user == null) {
+            result.add("Error, Pearson must specify username");
+            return result;
+        }
 
-        String username = params.get("username");
-        if (username == null)
-            throw new Exception("username param is not found");
+        String firstAttribute = data.get("attribute-1");
+        String secondAttribute = data.get("attribute-2");
 
-        String firstParam = params.get("first");
-        String secondParam = params.get("second");
-        if (firstParam == null || secondParam == null)
-            throw new Exception("first or second param is not found");
 
-        List<HMDataStructure> adjustedData = MongoModel.getInstance().adjust(username, firstParam, secondParam);
+        if (firstAttribute == null || secondAttribute == null){
+            result.add("Error, Pearson must specify username");
+            return result;
+        }
+        result.add(Pearson.correlation(user, firstAttribute, secondAttribute));
+        return result;
+    }
+
+    private HMResult normalize(HttpServletRequest request) {
+        HMResult result = new HMResult();
+        try {
+            MongoModel.getInstance().normalize();
+            result.add("train model successfully!!!");
+        } catch (Exception e){
+            result.add("train model unsuccessfully");
+            result.add(e.getMessage());
+        }
         return result;
     }
 
@@ -77,7 +111,30 @@ public class HMServerlet extends HttpServlet {
     }
 
     private HMResult knearestneighbor(HttpServletRequest request) {
-        return null;
+        Map<String,String> data = new Gson().fromJson(request.getParameter("data"), Map.class);
+        String user = data.get("user");
+        String prediction = data.get("prediction");
+        int numClusters = Integer.parseInt(data.get("num_clusters"));
+        double ratio;
+        String[] parameters = data.get("parameters").split(",");
+
+        //ratio default 0.7
+        if (data.get("ratio") == null)
+            ratio = 0.7;
+        else
+            ratio = Double.parseDouble(data.get("ratio"));
+
+        HMResult result = new HMResult();
+
+        if (user == null || prediction == null){
+            result.add("Error, k-nearest-neighbor needs to specify user and prediction");
+            return result;
+        }
+
+        KNearestNeighbor kNearestNeighbor = new KNearestNeighbor(user, prediction, numClusters);
+        kNearestNeighbor.train();
+        result.add(kNearestNeighbor.getAccuracy(ratio, parameters));
+        return result;
     }
 
     private HMResult update(HttpServletRequest request) {
