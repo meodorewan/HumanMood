@@ -31,13 +31,17 @@ public class KNearestNeighbor {
         //normalize
         for (int i = 0; i < parameters.length; i++) {
             mean[i] = 0;
+            int datasize =0;
             for (int j = 0; j < data.size(); j++) {
                 if (data.get(j).getString(parameters[i]) == null)
                     mean[i] += 0;
-                else
+                else{
+                    datasize +=1;
                     mean[i] += Double.parseDouble(data.get(j).getString(parameters[i]));
+                }
+
             }
-            mean[i] /= data.size();
+            mean[i] /= datasize;
         }
 
         HMDataStructure[] normalization = new HMDataStructure[data.size()];
@@ -54,7 +58,7 @@ public class KNearestNeighbor {
                 else
                     value = Double.parseDouble(data.get(j).getString(parameters[i]));
 
-                normalization[j].add(parameters[i], value);
+                normalization[j].add(parameters[i], value/mean[i]);
             }
         }
         //assign label
@@ -67,15 +71,48 @@ public class KNearestNeighbor {
             else
                 testingSet.add(normalization[i]);
 
+
+        // compute the center of each cluster
+        HMDataStructure[] lscenterNormalization = new HMDataStructure[numClusters];
+        int[] lsSize = new int[numClusters];
+        for(int i =0;i<numClusters;i++) lsSize[i]=0;
+        for(int j=0;j<trainingSet.size();j++){
+            HMDataStructure item = trainingSet.get(j);
+            int label =0;
+            while (label < item.getInt("label")-1) label++;
+            lsSize[label]++;
+            if(lscenterNormalization[label]== null) lscenterNormalization[label]=item;
+            else
+            {
+                for(int i =0;i<parameters.length;i++)
+                {
+                    double value = lscenterNormalization[label].getDouble(parameters[i])+ item.getDouble(parameters[i]);
+                    lscenterNormalization[label].add(parameters[i],value);
+                }
+            }
+        }
+        for(int j =0;j<numClusters;j++){
+            if(lsSize[j]==0)
+            {
+                for(int i =0;i<parameters.length;i++){
+                    lscenterNormalization[j].add(parameters[i],0);
+                }
+            }else{
+                for(int i =0;i<parameters.length;i++){
+                    double value = lscenterNormalization[j].getDouble(parameters[i])/lsSize[j];
+                    lscenterNormalization[j].add(parameters[i],value);
+                }
+            }
+        }
         //computer euclid distance
         //compute accuracy
         int n_true = 0;
         int n_predict = testingSet.size();
         for (int i = 0; i < testingSet.size(); i++){
             int best = 0;
-            for (int j = 1; j < trainingSet.size(); j++) {
-                if (computeDistance(testingSet.get(i), trainingSet.get(j), parameters) <
-                    computeDistance(testingSet.get(i), trainingSet.get(best), parameters))
+            for (int j = 1; j < lscenterNormalization.length; j++) {
+                if (computeDistance(testingSet.get(i), lscenterNormalization[j], parameters) <
+                    computeDistance(testingSet.get(i), lscenterNormalization[best], parameters))
                     best = j;
             }
             //System.out.println(trainingSet.get(best));
