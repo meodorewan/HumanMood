@@ -42,7 +42,7 @@ public class Pearson {
             sqrSumY += Y * Y;
         }
         double A = (sumXY / n) - (sumX/n)*(sumY/n);
-        double B = sqrt(sqrSumX - sumX*sumX / (n * n)) * sqrt(sqrSumY - sumY*sumY / (n * n));
+        double B = sqrt(sqrSumX/n - sumX*sumX / (n * n)) * sqrt(sqrSumY/n - sumY*sumY / (n * n));
         return A/B;
     }
 }
