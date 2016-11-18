@@ -105,8 +105,25 @@ public class HMServerlet extends HttpServlet {
     }
 
     private HMResult naivebayes(HttpServletRequest request) {
+        Map<String,String> data = new Gson().fromJson(request.getParameter("data"), Map.class);
+        String user = data.get("user");
+        String prediction = data.get("prediction");
+        int numClusters = Integer.parseInt(data.get("num_clusters"));
+        double ratio;
+
+        if (data.get("ratio") == null)
+            ratio = 0.7;
+        else
+            ratio = Double.parseDouble(data.get("ratio"));
+
+        String parameters[] = data.get("parameters").split(",");
+
         HMResult result = new HMResult();
-        result.add((new Naivebayes()).getAccuracy(request));
+
+        Naivebayes naiveBayes = new Naivebayes(user, prediction, numClusters);
+        naiveBayes.train();
+        result.add(naiveBayes.getAccuracy(ratio, parameters));
+
         return result;
     }
 

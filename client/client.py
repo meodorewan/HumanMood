@@ -41,15 +41,26 @@ def k_nearest_neighbor():
     params = {
         'user' : 'user001',
         'prediction': 'EA',
-        'num_clusters': '4',
+        'num_clusters': '2',
         'ratio': '0.7',
         'parameters': 'HR_min,HR_avg,HR_max'
     }
     run('k-nearest-neighbor', params)
 
+def naive_bayes():
+    params = {
+        'user' : 'user001',
+        'prediction': 'EA',
+        'num_clusters': '2',
+        'ratio': '0.8',
+        'parameters': 'HR_min,HR_avg,HR_max'
+    }
+    run('naive-bayes', params)
+
 if __name__ == "__main__":
 
-    k_nearest_neighbor()
+    naive_bayes()
+    #k_nearest_neighbor()
     #pearson()
 
 
@@ -59,11 +70,11 @@ if __name__ == "__main__":
     # }
     #System.out.println("yes");run('naive-bayes', params)
     # cnt = 0
-    # with open('../' + LIST_TABLES , 'rb') as lt:
+    # with open('../' + LIST_TABLES , 'r') as lt:
     #     for path in lt:
     #         with open('../resources/' + path.replace('\n', '').replace(' ', '') , 'rb') as f:
     #             reader = csv.DictReader(f)
-    #             for row in re(new Double(dNew)).toString()ader:
+    #             for row in reader:
     #                 cnt += 1
     #                 run('update', row)
     # print cnt
